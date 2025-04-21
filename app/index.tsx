@@ -1,19 +1,16 @@
-import { Stack, Link } from 'expo-router';
+import { useColorScheme } from 'nativewind';
 
-import { Button } from '~/components/Button';
-import { Container } from '~/components/Container';
-import { ScreenContent } from '~/components/ScreenContent';
+import { View, Button } from 'react-native';
+
+import { CarouselContexts } from '~/components/CarouselContexts';
 
 export default function Home() {
+  const { toggleColorScheme } = useColorScheme();
+
   return (
-    <>
-      <Stack.Screen options={{ title: 'Home' }} />
-      <Container>
-        <ScreenContent path="app/index.tsx" title="Home" />
-        <Link href={{ pathname: '/details', params: { name: 'Dan' } }} asChild>
-          <Button title="Show Details" />
-        </Link>
-      </Container>
-    </>
+    <View className='flex-1 justify-center dark:bg-black'>
+      <CarouselContexts />
+      <Button title='Toggle' onPress={toggleColorScheme}/>
+    </View>
   );
 }
