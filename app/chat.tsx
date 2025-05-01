@@ -1,7 +1,4 @@
 import { useState } from 'react';
-import { View, Text } from 'react-native';
-
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import EventSource from 'react-native-sse';
 import 'react-native-url-polyfill/auto';
@@ -10,13 +7,16 @@ import { useImmer } from 'use-immer';
 
 import { ChatContainer } from '~/components/ChatContainer';
 import { ChatInput } from '~/components/ChatInput';
+import { Container } from '~/components/Container';
 import { Header } from '~/components/Header';
 
 import chat from '~/services/chat';
 
+import { Message } from '~/types/Message';
+
 export default function Chat() {
   const [chatId, setChatId] = useState(null);
-  const [messages, setMessages] = useImmer([]);
+  const [messages, setMessages] = useImmer<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
 
   const isLoading = messages.length && messages[messages.length - 1].loading;
@@ -48,23 +48,28 @@ export default function Chat() {
           'Content-Type': 'application/json',
         },
         method: 'POST',
-        body: JSON.stringify({ message: trimmedMessage }),
+        body: JSON.stringify({ message: trimmedMessage }),        
       });
 
       es.addEventListener('open', (event) => {
         console.log('Open SSE connection.');
       });
 
-      es.addEventListener('message', (event) => {
-        console.log(event)
-        if (event.data !== '[DONE]') {
-          console.log(event.data)
-          const data = JSON.parse(event.data);
-          setMessages((draft) => {
-            draft[draft.length - 1].content += data;
-          });
-        } else {
+      es.addEventListener('message', (event: any) => {
+        setMessages(draft => {
+          draft[draft.length - 1].loading = false;
+        });
+
+        const data = JSON.parse(event.data)
+        const finish_reason = data?.finish_reason;
+           
+        if (finish_reason === "stop") {
           es.close();
+        }  else {
+          setMessages((draft) => {
+            draft[draft.length - 1].content += data.message;
+          });
+          return;
         }
       });
 
@@ -88,14 +93,14 @@ export default function Chat() {
   }
 
   return (
-    <SafeAreaView className="w-full flex-1 items-center justify-center p-5 dark:bg-black">
+    <Container>
       <Header showBackButton />
-      <ChatContainer />
+      <ChatContainer messages={messages} />
       <ChatInput
         newMessage={newMessage}
         setNewMessage={setNewMessage}
         handleSendMessage={submitNewMessage}
       />
-    </SafeAreaView>
+    </Container>
   );
 }
