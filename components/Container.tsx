@@ -8,7 +8,7 @@ interface ContainerProps {
 
 export function Container({ children }: ContainerProps) {
   return (
-    <SafeAreaView className="flex-1 w-full p-4 justify-center items-center dark:bg-black">
+    <SafeAreaView className="flex-1 w-full p-6 justify-center items-center dark:bg-black">
       {children}
     </SafeAreaView>
   );

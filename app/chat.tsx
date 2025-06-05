@@ -1,38 +1,38 @@
 import { useState } from 'react';
-
-import EventSource from 'react-native-sse';
-import 'react-native-url-polyfill/auto';
+import { FlatList, TouchableOpacity, View } from 'react-native';
 
 import { useImmer } from 'use-immer';
 
-import { ChatContainer } from '~/components/ChatContainer';
-import { ChatInput } from '~/components/ChatInput';
 import { Container } from '~/components/Container';
 import { Header } from '~/components/Header';
+import { LoadingMessage } from '~/components/LoadingMessage';
+import { ChatMessage } from '~/components/ChatMessage';
 
 import chat from '~/services/chat';
 
 import { Message } from '~/types/Message';
+import { TextInput } from 'react-native-gesture-handler';
+import { Ionicons } from '@expo/vector-icons';
+
+
+interface Feedback {
+  type: 'loading' | 'typing' | 'error';
+  text: string;
+}
 
 export default function Chat() {
-  const [chatId, setChatId] = useState(null);
+  const [chatId, setChatId] = useState<string | null>(null);
   const [messages, setMessages] = useImmer<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [input, setInput] = useState('');
+  const [feedback, setFeedback] = useState<null | Feedback>(null);
 
-  const isLoading = messages.length && messages[messages.length - 1].loading;
+  async function sendMessage() {
+    const inputText = input.trim();
+    if (!inputText) return;
 
-  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
-
-  async function submitNewMessage() {
-    const trimmedMessage = newMessage.trim();
-    if (!trimmedMessage || isLoading) return;
-
-    setMessages((draft) => [
-      ...draft,
-      { role: 'user', content: trimmedMessage },
-      { role: 'assistant', content: '', sources: [], loading: true },
-    ]);
-    setNewMessage('');
+    setMessages((draft) => [...draft, { role: 'user', content: inputText }]);
+    setInput('');
+    setFeedback({ type: 'loading', text: '' });
 
     let chatIdOrNew = chatId;
 
@@ -43,64 +43,62 @@ export default function Chat() {
         chatIdOrNew = id;
       }
 
-      const es = new EventSource(`${apiUrl}/chats/${chatIdOrNew}`, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        method: 'POST',
-        body: JSON.stringify({ message: trimmedMessage }),        
-      });
+      if (!chatIdOrNew) {
+        throw new Error('Failed to create or get chat ID');
+      }
 
-      es.addEventListener('open', (event) => {
-        console.log('Open SSE connection.');
-      });
+      setMessages((draft) => [
+        ...draft,
+        { role: 'assistant', content: '', loading: true, error: false },
+      ]);
 
-      es.addEventListener('message', (event: any) => {
-        setMessages(draft => {
-          draft[draft.length - 1].loading = false;
-        });
-
-        const data = JSON.parse(event.data)
-        const finish_reason = data?.finish_reason;
-           
-        if (finish_reason === "stop") {
-          es.close();
-        }  else {
+      await chat.sendMessage(chatIdOrNew, inputText, {
+        onChunk: (chunk) => {
           setMessages((draft) => {
-            draft[draft.length - 1].content += data.message;
+            draft[draft.length - 1].content += chunk;
           });
-          return;
-        }
+        },
       });
 
-      es.addEventListener('error', (event) => {
-        if (event.type === 'error') {
-          console.error('Connection error:', event.message);
-        } else if (event.type === 'exception') {
-          console.error('Error:', event.message, event.error);
-        }
+      setMessages((draft) => {
+        draft[draft.length - 1].loading = false;
       });
 
-      es.addEventListener('close', (event) => {
-        console.log('Close SSE connection.');
-      });
+      setFeedback(null);
     } catch (err) {
       setMessages((draft) => {
         draft[draft.length - 1].loading = false;
-        draft[draft.length - 1].error = false;
+        draft[draft.length - 1].error = true;
       });
+      setFeedback({type: "error", text: "Houve um erro"})
     }
   }
 
   return (
     <Container>
       <Header showBackButton />
-      <ChatContainer messages={messages} />
-      <ChatInput
-        newMessage={newMessage}
-        setNewMessage={setNewMessage}
-        handleSendMessage={submitNewMessage}
-      />
+      <View className="w-full flex-1">
+        <FlatList
+          data={messages}
+          keyExtractor={(_, index) => index.toString()}
+          renderItem={({ item }) => <ChatMessage message={item} />}
+          ListFooterComponent={() => (feedback?.type === 'loading' ? <LoadingMessage /> : null)}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
+
+      <View className="min-h-8 w-full flex-row items-center rounded-2xl bg-zinc-200 p-2 dark:bg-zinc-900">
+        <TextInput
+          className="flex-1 text-black text-lg"
+          value={input}
+          onChangeText={setInput}
+          placeholder="Digite sua mensagem..."
+          placeholderTextColor="gray"
+        />
+        <TouchableOpacity onPress={sendMessage}>
+          <Ionicons name="send" color="gray" size={18} />
+        </TouchableOpacity>
+      </View>
     </Container>
   );
 }

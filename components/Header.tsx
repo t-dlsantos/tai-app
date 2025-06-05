@@ -11,7 +11,7 @@ interface Props {
 
 export function Header({ showBackButton }: Props) {
     return (
-        <View className='w-full flex-row justify-between items-center'>
+        <View className='w-full flex-row justify-between items-center mb-4'>
             {showBackButton &&
                 <Ionicons name='arrow-back' size={22} color={'gray'} onPress={() => router.replace('/')}/>
             }
