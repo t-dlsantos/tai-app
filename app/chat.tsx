@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { FlatList, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, FlatList, TouchableOpacity, View } from 'react-native';
 
 import { useImmer } from 'use-immer';
 
@@ -11,9 +11,11 @@ import { ChatMessage } from '~/components/ChatMessage';
 import chat from '~/services/chat';
 
 import { Message } from '~/types/Message';
+
 import { TextInput } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useAudioRecorder, RecordingPresets, useAudioPlayer, AudioModule } from 'expo-audio';
 
 interface Feedback {
   type: 'loading' | 'typing' | 'error';
@@ -25,6 +27,12 @@ export default function Chat() {
   const [messages, setMessages] = useImmer<Message[]>([]);
   const [input, setInput] = useState('');
   const [feedback, setFeedback] = useState<null | Feedback>(null);
+
+  const [isRecording, setIsRecording] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [audioURI, setAudioURI] = useState<string | null>(null);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const player = useAudioPlayer();
 
   async function sendMessage() {
     const inputText = input.trim();
@@ -74,6 +82,38 @@ export default function Chat() {
     }
   }
 
+  async function record() {
+    await audioRecorder.prepareToRecordAsync();
+    setIsRecording(true);
+    audioRecorder.record();
+  }
+  
+  async function stopRecording() {
+    setIsRecording(false);
+    await audioRecorder.stop();
+    setAudioURI(audioRecorder.uri);
+  }
+
+  function listen() {
+    setIsListening(true)
+    player.replace(audioURI);
+    player.play();
+  }
+  
+  function stopListening() {
+    setIsListening(false);
+    player.pause();
+  }
+
+  useEffect(() => {
+    (async () => {
+      const status = await AudioModule.requestRecordingPermissionsAsync();
+      if (!status.granted) {
+        Alert.alert('Permission to access microphone was denied');
+      }
+    })();
+  }, []);
+  
   return (
     <Container>
       <Header showBackButton />
@@ -92,12 +132,21 @@ export default function Chat() {
           className="flex-1 text-black text-lg"
           value={input}
           onChangeText={setInput}
+          multiline={true}
           placeholder="Digite sua mensagem..."
           placeholderTextColor="gray"
         />
-        <TouchableOpacity onPress={sendMessage}>
-          <Ionicons name="send" color="gray" size={18} />
-        </TouchableOpacity>
+        <View className="gap-4 flex-row">
+          <TouchableOpacity onPress={isRecording ? stopRecording: record}>
+            <Ionicons name="mic" color={isRecording ? "red" : "gray"} size={20} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={isListening ? stopListening : listen}>
+            <Ionicons name="play" color={isListening ? "red" : "gray"} size={20} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={sendMessage}>
+            <Ionicons name="send" color="gray" size={18} />
+          </TouchableOpacity>
+        </View>
       </View>
     </Container>
   );
