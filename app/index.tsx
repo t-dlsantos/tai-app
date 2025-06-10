@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { useColorScheme } from 'nativewind';
 
-import { View, Button } from 'react-native';
+import { View, Button, TextInput } from 'react-native';
 
 import { CarouselContexts } from '~/components/CarouselContexts';
 import { Logo } from '~/components/Logo';
