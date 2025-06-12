@@ -21,12 +21,13 @@ export default function TabsLayout() {
             backgroundColor: colorScheme === "dark" ? "#040A18" : '#FFF',
             borderTopWidth: 0.8,
           },
+          tabBarActiveTintColor: colorScheme === "dark" ? 'white' : "black"
         }}>
         <Tabs.Screen
           name="home"
           options={{
             title: 'Home',
-            tabBarIcon: ({ color }) => <MaterialIcons name="home" size={24} co  lor={color} />,
+            tabBarIcon: ({ color }) => <MaterialIcons name="home" size={24} color={color} />,
           }}
         />
         <Tabs.Screen

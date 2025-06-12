@@ -1,139 +1,156 @@
-  import { useEffect, useState } from 'react';
-  import { Alert, FlatList, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Alert,
+  FlatList,
+  TouchableOpacity,
+  View,
+  KeyboardAvoidingView,
+  Platform,
+  Text,
+} from 'react-native';
 
-  import { useImmer } from 'use-immer';
+import { useImmer } from 'use-immer';
 
-  import { Container } from '~/components/Container';
-  import { Header } from '~/components/Header';
-  import { LoadingMessage } from '~/components/LoadingMessage';
-  import { ChatMessage } from '~/components/ChatMessage';
+import { Container } from '~/components/Container';
+import { Header } from '~/components/Header';
+import { LoadingMessage } from '~/components/LoadingMessage';
+import { ChatMessage } from '~/components/ChatMessage';
 
-  import chat from '~/services/chat';
+import chat from '~/services/chat';
 
-  import { Message } from '~/types/Message';
+import { Message } from '~/types/Message';
 
-  import { TextInput } from 'react-native-gesture-handler';
-  import { Ionicons } from '@expo/vector-icons';
+import { TextInput } from 'react-native-gesture-handler';
+import { Ionicons } from '@expo/vector-icons';
 
-  import { useAudioRecorder, RecordingPresets, useAudioPlayer, AudioModule } from 'expo-audio';
-  import { sendAudio } from '~/services/audio';
+import { useAudioRecorder, RecordingPresets, useAudioPlayer, AudioModule } from 'expo-audio';
+import { sendAudio } from '~/services/audio';
 
-  interface Feedback {
-    type: 'loading' | 'typing' | 'error';
-    text: string;
+interface Feedback {
+  type: 'loading' | 'typing' | 'error';
+  text: string;
+}
+
+export default function Chat() {
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [messages, setMessages] = useImmer<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [feedback, setFeedback] = useState<null | Feedback>(null);
+
+  const [isRecording, setIsRecording] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [audioURI, setAudioURI] = useState<string | null>(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout>();
+
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const player = useAudioPlayer();
+
+  async function sendMessage() {
+    const inputText = input.trim();
+    if (!inputText) return;
+
+    setMessages((draft) => [...draft, { role: 'user', content: inputText }]);
+    setInput('');
+    setFeedback({ type: 'loading', text: '' });
+
+    let chatIdOrNew = chatId;
+
+    try {
+      if (!chatId) {
+        const { id } = await chat.createChat();
+        setChatId(id);
+        chatIdOrNew = id;
+      }
+
+      if (!chatIdOrNew) {
+        throw new Error('Failed to create or get chat ID');
+      }
+
+      setMessages((draft) => [
+        ...draft,
+        { role: 'assistant', content: '', loading: true, error: false },
+      ]);
+
+      await chat.sendMessage(chatIdOrNew, inputText, {
+        onChunk: (chunk) => {
+          setMessages((draft) => {
+            draft[draft.length - 1].content += chunk;
+          });
+        },
+      });
+
+      setMessages((draft) => {
+        draft[draft.length - 1].loading = false;
+      });
+
+      setFeedback(null);
+    } catch (err) {
+      setMessages((draft) => {
+        draft[draft.length - 1].loading = false;
+        draft[draft.length - 1].error = true;
+      });
+      setFeedback({ type: 'error', text: 'Houve um erro' });
+    }
   }
 
-  export default function Chat() {
-    const [chatId, setChatId] = useState<string | null>(null);
-    const [messages, setMessages] = useImmer<Message[]>([]);
-    const [input, setInput] = useState('');
-    const [feedback, setFeedback] = useState<null | Feedback>(null);
+  async function record() {
+    await audioRecorder.prepareToRecordAsync();
+    setIsRecording(true);
+    setRecordingTime(0);
+    audioRecorder.record();
 
-    const [isRecording, setIsRecording] = useState(false);
-    const [isListening, setIsListening] = useState(false);
-    const [audioURI, setAudioURI] = useState<string | null>(null);
-    const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-    const player = useAudioPlayer();
-  
-    async function sendMessage() {
-      const inputText = input.trim();
-      if (!inputText) return;
+    timerRef.current = setInterval(() => {
+      setRecordingTime((prev) => prev + 1);
+    }, 1000);
+  }
 
-      setMessages((draft) => [...draft, { role: 'user', content: inputText }]);
-      setInput('');
-      setFeedback({ type: 'loading', text: '' });
+  async function stopRecording() {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    setRecordingTime(0);
+    setIsRecording(false);
+    await audioRecorder.stop();
+    const uri = audioRecorder.uri;
+    setAudioURI(uri);
 
-      let chatIdOrNew = chatId;
-
+    if (uri) {
       try {
-        if (!chatId) {
-          const { id } = await chat.createChat();
-          setChatId(id);
-          chatIdOrNew = id;
+        const result = await sendAudio(uri);
+        if (result.transcription) {
+          setInput(result.transcription);
         }
-
-        if (!chatIdOrNew) {
-          throw new Error('Failed to create or get chat ID');
-        }
-
-        setMessages((draft) => [
-          ...draft,
-          { role: 'assistant', content: '', loading: true, error: false },
-        ]);
-
-        await chat.sendMessage(chatIdOrNew, inputText, {
-          onChunk: (chunk) => {
-            setMessages((draft) => {
-              draft[draft.length - 1].content += chunk;
-            });
-          },
-        });
-
-        setMessages((draft) => {
-          draft[draft.length - 1].loading = false;
-        });
-
-        setFeedback(null);
-      } catch (err) {
-        setMessages((draft) => {
-          draft[draft.length - 1].loading = false;
-          draft[draft.length - 1].error = true;
-        });
-        setFeedback({type: "error", text: "Houve um erro"})
+      } catch (error) {
+        Alert.alert('Erro ao enviar o áudio para o servidor');
       }
     }
+  }
 
-    async function record() {
-      await audioRecorder.prepareToRecordAsync();
-      setIsRecording(true);
-      audioRecorder.record();
+  async function cancelRecording() {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
     }
-    
-    async function stopRecording() {
-      setIsRecording(false);
-      await audioRecorder.stop();
-      const uri = audioRecorder.uri;
-      setAudioURI(uri);
+    setRecordingTime(0);
+    setIsRecording(false);
+    await audioRecorder.stop();
+    setAudioURI(null);
+  }
 
-      if (uri) {
-        try {
-          const result = await sendAudio(uri);
-          if (result.transcription) {
-            setInput(result.transcription);
-          }
-
-        } catch (error) {
-          Alert.alert('Erro ao enviar o áudio para o servidor');
-        }
+  useEffect(() => {
+    (async () => {
+      const status = await AudioModule.requestRecordingPermissionsAsync();
+      if (!status.granted) {
+        Alert.alert('Permission to access microphone was denied');
       }
-    }
+    })();
+  }, []);
 
-    function listen() {
-      setIsListening(true)
-      player.replace(audioURI);
-      player.play();
-    }
-    
-    function stopListening() {
-      setIsListening(false);
-      player.pause();
-    }
-
-    useEffect(() => {
-      (async () => {
-        const status = await AudioModule.requestRecordingPermissionsAsync();
-        if (!status.granted) {
-          Alert.alert('Permission to access microphone was denied');
-        }
-      })();
-    }, []);
-    
   return (
     <Container>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1, width: '100%' }}
-      >
+        style={{ flex: 1, width: '100%' }}>
         <Header showBackButton />
         <View className="w-full flex-1">
           <FlatList
@@ -144,28 +161,37 @@
             showsVerticalScrollIndicator={false}
           />
         </View>
-        <View className="min-h-8 w-full flex-row items-center mb-2 rounded-2xl bg-zinc-200 p-2 dark:bg-zinc-900">
+        <View className="mb-2 gap-2 w-full items-center rounded-2xl bg-zinc-200 p-2 dark:bg-[#171731]">
           <TextInput
-            className="flex-1 text-black text-lg"
+            className="w-full text-lg text-black dark:text-white"
             value={input}
             onChangeText={setInput}
             multiline={true}
             placeholder="Digite sua mensagem..."
             placeholderTextColor="gray"
           />
-          <View className="gap-4 flex-row">
-            <TouchableOpacity onPress={isRecording ? stopRecording : record}>
-              <Ionicons name="mic" color={isRecording ? "red" : "gray"} size={20} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={isListening ? stopListening : listen}>
-              <Ionicons name="play" color={isListening ? "red" : "gray"} size={20} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={sendMessage}>
-              <Ionicons name="send" color="gray" size={18} />
-            </TouchableOpacity>
-          </View>
+          {isRecording ? (
+            <View className="w-full flex-row justify-between">
+              <TouchableOpacity onPress={cancelRecording}>
+                <Ionicons name="close-circle" color="gray" size={28} />
+              </TouchableOpacity>
+              <Text className="text-">{`${Math.floor(recordingTime / 60)}:${(recordingTime % 60).toString().padStart(2, '0')}`}</Text>
+              <TouchableOpacity onPress={stopRecording}>
+                <Ionicons name="checkmark-circle" color="gray" size={28} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View className="w-full flex-row justify-end gap-4">
+              <TouchableOpacity onPress={isRecording ? stopRecording : record}>
+                <Ionicons name="mic" color="gray" size={24} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={sendMessage}>
+                <Ionicons name="send" color="gray" size={22} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Container>
   );
-  }
+}
