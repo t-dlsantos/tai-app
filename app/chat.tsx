@@ -16,6 +16,7 @@
   import { Ionicons } from '@expo/vector-icons';
 
   import { useAudioRecorder, RecordingPresets, useAudioPlayer, AudioModule } from 'expo-audio';
+  import { sendAudio } from '~/services/audio';
 
   interface Feedback {
     type: 'loading' | 'typing' | 'error';
@@ -33,7 +34,7 @@
     const [audioURI, setAudioURI] = useState<string | null>(null);
     const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
     const player = useAudioPlayer();
-
+  
     async function sendMessage() {
       const inputText = input.trim();
       if (!inputText) return;
@@ -91,7 +92,20 @@
     async function stopRecording() {
       setIsRecording(false);
       await audioRecorder.stop();
-      setAudioURI(audioRecorder.uri);
+      const uri = audioRecorder.uri;
+      setAudioURI(uri);
+
+      if (uri) {
+        try {
+          const result = await sendAudio(uri);
+          if (result.transcription) {
+            setInput(result.transcription);
+          }
+
+        } catch (error) {
+          Alert.alert('Erro ao enviar o áudio para o servidor');
+        }
+      }
     }
 
     function listen() {
