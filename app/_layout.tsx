@@ -7,6 +7,7 @@ import { Inter_900Black, Inter_700Bold, useFonts } from '@expo-google-fonts/inte
 import { SplashScreen, Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { View } from 'react-native';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -27,13 +28,15 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView className="dark:bg-[#040A18]">
-      <SafeAreaProvider>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="chat" options={{ headerShown: false, animation: 'simple_push' }} />
-        </Stack>
-      </SafeAreaProvider>
+    <GestureHandlerRootView>
+      <View className='flex-1 dark:bg-[#040A18]'>
+        <SafeAreaProvider>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="chat" options={{ headerShown: false, animation: 'simple_push' }} />
+          </Stack>
+        </SafeAreaProvider>
+      </View>
     </GestureHandlerRootView>
   );
 }
