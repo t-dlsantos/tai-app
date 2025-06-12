@@ -4,21 +4,16 @@ import { useEffect } from 'react';
 
 import { Inter_900Black, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
 
-import * as SplashScreen from 'expo-splash-screen';
-
-import { Stack } from 'expo-router';
-
+import { SplashScreen, Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
-import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function Layout() {
+export default function RootLayout() {
   const [loaded, error] = useFonts({
     Inter_900Black,
-    Inter_700Bold
+    Inter_700Bold,
   });
 
   useEffect(() => {
@@ -30,12 +25,14 @@ export default function Layout() {
   if (!loaded && !error) {
     return null;
   }
-  
+
   return (
-    <GestureHandlerRootView>
+    <GestureHandlerRootView className="dark:bg-[#040A18]">
       <SafeAreaProvider>
-      <StatusBar style='auto' />  
-      <Stack screenOptions={{ headerShown: false }} />
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="chat" options={{ headerShown: false, animation: 'simple_push' }} />
+        </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
