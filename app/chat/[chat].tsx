@@ -14,7 +14,7 @@ import { useImmer } from 'use-immer';
 import { Container } from '~/components/Container';
 import { Header } from '~/components/Header';
 import { LoadingMessage } from '~/components/LoadingMessage';
-import { ChatMessage } from '~/components/ChatMessage';
+import { ChatMessage, MessageProps } from '~/components/ChatMessage';
 
 import { Message } from '~/types/Message';
 
@@ -36,12 +36,14 @@ export default function Chat() {
   const [chatId, setChatId] = useState<string | null>(null);
   const { chat } = useLocalSearchParams<{ chat: string }>();
 
-  const [messages, setMessages] = useImmer<Message[]>([]);
+  const [messages, setMessages] = useImmer<MessageProps[]>([]);
   const [input, setInput] = useState('');
+  const [currentTurn, setCurrentTurn] = useState<number | null>(null);
+
   const [feedback, setFeedback] = useState<null | Feedback>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const [userId] = useState(() => Date.now());
-  
+
   const [isRecording, setIsRecording] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [audioURI, setAudioURI] = useState<string | null>(null);
@@ -49,11 +51,13 @@ export default function Chat() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
+  const isMyTurn = currentTurn === userId;
+
   async function sendMessage() {
     const inputText = input.trim();
     if (!inputText) return;
 
-    setMessages((draft) => [...draft, { role: 'user', content: inputText, userId }]);
+    setMessages((draft) => [...draft, { role: 'user', content: inputText }]);
     setInput('');
 
     wsRef.current?.send(inputText);
@@ -114,21 +118,19 @@ export default function Chat() {
   useEffect(() => {
     const ws = new WebSocket(`ws://192.168.1.6:8000/ws/${chat}/${userId}`);
     wsRef.current = ws;
-
-    // ws.onopen = () => {
-    //   console.log('Connection Opened');
-    // };
-
+    
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
       console.log(data);
-      
-      if (data.type === "message") {
-        setMessages((draft) => [...draft, { role: data.role, content: data.message }]);
-      }
-      else {
-        
+
+      if (data.type === 'message') {
+        setMessages((draft) => [
+          ...draft,
+          { role: data.role, content: data.message, sender: data.sender },
+        ]);
+      } else if (data.type === 'turn') {
+        setCurrentTurn(data.current_turn);
       }
     };
 
@@ -163,7 +165,8 @@ export default function Chat() {
             value={input}
             onChangeText={setInput}
             multiline={true}
-            placeholder="Digite sua mensagem..."
+            editable={isMyTurn}
+            placeholder={isMyTurn ? "Digite sua mensagem..." : `É a vez de: ${currentTurn}`}
             placeholderTextColor="gray"
           />
           {isRecording ? (
@@ -177,14 +180,16 @@ export default function Chat() {
               </TouchableOpacity>
             </View>
           ) : (
-            <View className="w-full flex-row justify-end gap-4">
-              <TouchableOpacity onPress={isRecording ? stopRecording : record}>
-                <Ionicons name="mic" color="gray" size={24} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={sendMessage}>
-                <Ionicons name="send" color="gray" size={22} />
-              </TouchableOpacity>
-            </View>
+            isMyTurn && (
+              <View className="w-full flex-row justify-end gap-4">
+                <TouchableOpacity onPress={isRecording ? stopRecording : record}>
+                  <Ionicons name="mic" color="gray" size={24} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={sendMessage}>
+                  <Ionicons name="send" color="gray" size={22} />
+                </TouchableOpacity>
+              </View>
+            )
           )}
         </View>
       </KeyboardAvoidingView>

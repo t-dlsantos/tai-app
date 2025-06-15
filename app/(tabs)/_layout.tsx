@@ -8,7 +8,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useColorScheme } from 'nativewind';
 
 export default function TabsLayout() {
-  const { colorScheme }= useColorScheme();
+  const { colorScheme } = useColorScheme();
   
   return (
     <View className="flex-1">
