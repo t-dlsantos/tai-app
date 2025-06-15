@@ -2,7 +2,7 @@ import { View, Text } from 'react-native';
 
 export interface MessageProps {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'other_user';
   content: string;
   error?: boolean;
 }

@@ -8,7 +8,7 @@ export function CarouselItem({ context }: { context: ContextItem }) {
       <View className="absolute">
         {[...Array(3)].map((_, index) => (
           <Text
-            className="text-[36px] font-bold leading-[1.1] text-black dark:text-white"
+            className="text-[36px] font-bold leading-[1.1] text-white dark:text-white"
             key={index}>
             {context.text}
           </Text>

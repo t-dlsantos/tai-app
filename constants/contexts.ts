@@ -1,16 +1,16 @@
 export const contexts = [
   {
     id: 1,
-    title: 'Coffee Shop',
+    title: 'Cafeteria',
     text: 'Coffee',
-    description: 'Practice real conversations in a Coffee Shop context',
+    description: 'Pratique conversas reais em uma Cafeteria',
     imageSource: require('assets/coffee.png'),
   },
   {
     id: 2,
-    title: 'Gym',
+    title: 'Academia',
     text: 'Gym',
-    description: 'Practice real conversations in a Gym context',
+    description: 'Pratique conversas reais em uma Academia',
     imageSource: require('assets/gym.png'),
   },
 ];

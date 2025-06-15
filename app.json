@@ -36,6 +36,17 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
+      "package": "com.jamestheboy.taiapp"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0088b3ed-7f39-4d2d-8f26-12366c2001f2"
       }
     }
   }

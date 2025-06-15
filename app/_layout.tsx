@@ -29,11 +29,22 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView>
-      <View className='flex-1 dark:bg-[#040A18]'>
+      <View className="flex-1 dark:bg-[#040A18]">
         <SafeAreaProvider>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="chat" options={{ headerShown: false, animation: 'simple_push' }} />
+            <Stack.Screen
+              name="chat/[chat]"
+              options={{ headerShown: false, animation: 'simple_push' }}
+            />
+            <Stack.Screen
+              name="room"
+              options={{
+                presentation: 'transparentModal',
+                animation: 'fade',
+                headerShown: false,
+              }}
+            />
           </Stack>
         </SafeAreaProvider>
       </View>

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View, Text } from 'react-native';
 
 import { CarouselContexts } from '~/components/CarouselContexts';
@@ -6,6 +7,8 @@ import { Header } from '~/components/Header';
 import { Hero } from '~/components/Hero';
 
 export default function Home() {
+  const [modalVisible, setModalVisible] = useState(false);
+  
   return (
     <Container>
       <Header />
@@ -18,7 +21,7 @@ export default function Home() {
       <Hero />
       <View className="mt-5 w-full">
         <Text className="mb-5 text-xl font-semibold dark:text-white">Onde quer praticar hoje?</Text>
-        <CarouselContexts />
+        <CarouselContexts onPracticeWithFriend={() => setModalVisible(true)}/>
       </View>
     </Container>
   );
