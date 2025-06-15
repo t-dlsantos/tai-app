@@ -76,7 +76,7 @@ export default function Modal() {
 
   return (
     <Animated.View entering={FadeIn} className="flex-1 items-center justify-center bg-[#00000040]">
-      <Link href={'/home'} asChild>
+      <Link href={'/(tabs)'} asChild>
         <Pressable />
       </Link>
       <Animated.View
@@ -118,7 +118,7 @@ export default function Modal() {
               </TouchableOpacity>
             </Animated.View>
             <Animated.View className="w-full items-center justify-center">
-              <Link href="/home" className="flex-row items-center gap-2">
+              <Link href="/(tabs)" className="flex-row items-center gap-2">
                 <Ionicons name="arrow-back" />
                 <Text className="text-sm">Voltar</Text>
               </Link>
