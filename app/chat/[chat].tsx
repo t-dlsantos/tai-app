@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, FlatList, TouchableOpacity, View, Text } from 'react-native';
 
 import { Container } from '~/components/Container';
@@ -15,6 +15,7 @@ import { useLocalSearchParams } from 'expo-router';
 
 import { useChatWebSocket } from '~/hooks/useChatWebSocket';
 import { useAudioRecording } from '~/hooks/useAudioRecording';
+import { useSoloChatWebSocket } from '~/hooks/useSoloChatWebSocket';
 
 interface Feedback {
   type: 'loading' | 'typing' | 'error';
@@ -26,8 +27,9 @@ export default function Chat() {
   const [userId] = useState(() => Date.now());
   const [feedback, setFeedback] = useState<null | Feedback>(null);
   const [input, setInput] = useState('');
+  const [bannerVisible, setBannerVisible] = useState(false);
 
-  const { messages, currentTurn, isMyTurn, sendMessage } = useChatWebSocket({
+  const { messages, sendMessage, notification } = useSoloChatWebSocket({
     chatId: chat!,
     userId,
   });
@@ -59,9 +61,35 @@ export default function Chat() {
     }
   }
 
+  useEffect(() => {
+    if (notification) {
+      setBannerVisible(true);
+      const timer = setTimeout(() => {
+        setBannerVisible(false);
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+
   return (
     <Container>
       <Header showBackButton />
+      {bannerVisible && notification && (
+        <View
+          style={{
+            backgroundColor: '#333',
+            padding: 8,
+            position: 'absolute',
+            top: 60,
+            alignSelf: 'center',
+            borderRadius: 8,
+            zIndex: 1,
+          }}
+        >
+          <Text style={{ color: '#fff' }}>{notification}</Text>
+        </View>
+      )}
       <View className="w-full flex-1">
         <FlatList
           data={messages}
@@ -77,8 +105,7 @@ export default function Chat() {
           value={input}
           onChangeText={setInput}
           multiline={true}
-          editable={isMyTurn}
-          placeholder={isMyTurn ? 'Digite sua mensagem...' : `É a vez de: ${currentTurn}`}
+          placeholder={"Digite sua mensagem"}
           placeholderTextColor="gray"
         />
         {isRecording ? (
@@ -86,13 +113,15 @@ export default function Chat() {
             <TouchableOpacity onPress={cancelRecording}>
               <Ionicons name="close-circle" color="gray" size={28} />
             </TouchableOpacity>
-            <Text className="text-">{`${Math.floor(recordingTime / 60)}:${(recordingTime % 60).toString().padStart(2, '0')}`}</Text>
+            <Text>{`${Math.floor(recordingTime / 60)}:${(recordingTime % 60)
+              .toString()
+              .padStart(2, '0')}`}</Text>
             <TouchableOpacity onPress={handleStopRecording}>
               <Ionicons name="checkmark-circle" color="gray" size={28} />
             </TouchableOpacity>
           </View>
         ) : (
-          isMyTurn && (
+
             <View className="w-full flex-row justify-end gap-4">
               <TouchableOpacity onPress={handleStartRecording}>
                 <Ionicons name="mic" color="gray" size={24} />
@@ -101,7 +130,7 @@ export default function Chat() {
                 <Ionicons name="send" color="gray" size={22} />
               </TouchableOpacity>
             </View>
-          )
+          
         )}
       </View>
     </Container>

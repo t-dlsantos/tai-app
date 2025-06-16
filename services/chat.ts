@@ -11,11 +11,11 @@ interface SendMessageOptions {
   onChunk?: (chunk: string) => void;
 }
 
-async function createChat() {
+async function createChat(theme_title: string) {
   const res = await fetch(API_URL + '/chats', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({})
+    body: JSON.stringify({ theme_title: theme_title})
   });
 
   const data = await res.json();
@@ -80,6 +80,7 @@ async function sendMessage(
     });
   });
 }
+
 export default {
   createChat,
   sendMessage

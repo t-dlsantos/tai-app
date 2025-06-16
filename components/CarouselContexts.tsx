@@ -7,14 +7,21 @@ import { useState } from 'react';
 import { router } from 'expo-router';
 
 import { Ionicons } from '@expo/vector-icons';
+import { useSoloChatWebSocket } from '~/hooks/useSoloChatWebSocket';
+import chat from '~/services/chat';
 
-interface Props {
-  onPracticeWithFriend: () => void;
-}
-
-export function CarouselContexts({ onPracticeWithFriend } : Props) {
+export function CarouselContexts() {
   const scrollOffsetValue = useSharedValue<number>(0);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  async function handleSoloPractice() {
+    try {
+      const { id } = await chat.createChat(contexts[currentIndex].text);
+      router.replace({ pathname: '/chat/[chat]', params: { chat: id } });
+    } catch (err) {
+      console.error('Erro ao criar chat:', err);
+    }
+  }
   
   return (
     <View className="items-center justify-center border p-8 rounded-xl bg-slate-900 w-full border-gray-200 dark:border-gray-800">
@@ -47,7 +54,7 @@ export function CarouselContexts({ onPracticeWithFriend } : Props) {
       </View>
       <TouchableOpacity
         className="mt-2 h-12 w-full items-center flex-row gap-2 justify-center rounded-lg bg-violet-5 00"
-        onPress={() => router.replace('/chat')}>
+        onPress={handleSoloPractice}>
         <Ionicons name='person' color="white" size={20}/>
         <Text className="font-regular text-zinc-100 ">Praticar sozinho</Text>
       </TouchableOpacity>
