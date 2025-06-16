@@ -1,24 +1,27 @@
 import { View, Text } from 'react-native';
+import { useUserId } from '~/hooks/useUserId';
 
 export interface MessageProps {
   id: string;
   role: 'user' | 'assistant' | 'other_user';
-  sender: string;
+  sender: number;
   content: string;
   error?: boolean;
 }
 
 export function ChatMessage({ message }: { message: MessageProps }) {
-  const isUser = message.role === 'user';
+  const userId = useUserId()
+  
+  const isUser = String(message.sender) === String(userId);
   const isAssistant = message.role === 'assistant';
-  const isOtherUser = message.role === 'other_user';
+  const isOtherUser = !isUser && !isAssistant;
 
   const alignmentClass = isAssistant
     ? 'self-center'
     : isUser
       ? 'self-end bg-zinc-200'
       : 'self-start';
-
+  console.log(userId)
   return (
     <View className='w-full flex-col'>
       {(isAssistant || isOtherUser) && (

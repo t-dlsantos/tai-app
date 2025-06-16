@@ -17,15 +17,27 @@ export function CarouselContexts() {
   async function handleSoloPractice() {
     try {
       const { id } = await chat.createChat(contexts[currentIndex].text);
-      router.replace({ pathname: '/chat/[chat]', params: { chat: id } });
+      router.replace({
+        pathname: '/chat/[chat]',
+        params: { chat: id, mode: 'solo' },
+      });
     } catch (err) {
       console.error('Erro ao criar chat:', err);
     }
   }
-  
+
+  function handleGroupPractice() {
+    router.push({
+      pathname: '/room',
+      params: {
+        theme: contexts[currentIndex].text,
+      },
+    });
+  }
+
   return (
-    <View className="items-center justify-center border p-8 rounded-xl bg-slate-900 w-full border-gray-200 dark:border-gray-800">
-      <View className="flex-row h-48 items-center">
+    <View className="w-full items-center justify-center rounded-xl border border-gray-200 bg-slate-900 p-8 dark:border-gray-800">
+      <View className="h-48 flex-row items-center">
         <Carousel
           loop={true}
           width={180}
@@ -44,24 +56,22 @@ export function CarouselContexts() {
           renderItem={({ item, index }) => <CarouselItem context={item} key={index} />}
         />
         <View className="mt-16 w-44 justify-center px-4">
-          <Text className="text-2xl font-bold text-white">
-            {contexts[currentIndex].title}
-          </Text>
+          <Text className="text-2xl font-bold text-white">{contexts[currentIndex].title}</Text>
           <Text className="mt-2 text-base text-gray-400 dark:text-gray-300">
             {contexts[currentIndex].description}
           </Text>
         </View>
       </View>
       <TouchableOpacity
-        className="mt-2 h-12 w-full items-center flex-row gap-2 justify-center rounded-lg bg-violet-5 00"
+        className="bg-violet-5 00 mt-2 h-12 w-full flex-row items-center justify-center gap-2 rounded-lg"
         onPress={handleSoloPractice}>
-        <Ionicons name='person' color="white" size={20}/>
+        <Ionicons name="person" color="white" size={20} />
         <Text className="font-regular text-zinc-100 ">Praticar sozinho</Text>
       </TouchableOpacity>
       <TouchableOpacity
-        className="h-12 w-full items-center flex-row gap-2 justify-center rounded-lg bg-violet-5 00"
-        onPress={() => router.push('/room')}>
-        <Ionicons name='people' color="white" size={24}/>
+        className="bg-violet-5 00 h-12 w-full flex-row items-center justify-center gap-2 rounded-lg"
+        onPress={handleGroupPractice}>
+        <Ionicons name="people" color="white" size={24} />
         <Text className="font-regular text-zinc-100 ">Praticar com um amigo</Text>
       </TouchableOpacity>
     </View>

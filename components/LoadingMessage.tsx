@@ -13,6 +13,6 @@ export function LoadingMessage() {
     }, []);
 
     return (
-        <Text className="text-black opacity-70 text-xl">{dots}</Text>
+        <Text className="text-black opacity-70 text-2xl">{dots}</Text>
     );
 }

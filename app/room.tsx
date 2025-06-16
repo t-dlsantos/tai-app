@@ -7,72 +7,36 @@ import {
   TextInput,
   TouchableOpacity,
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { Link, router, useLocalSearchParams } from 'expo-router';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import chat from '~/services/chat';
+import { useCreateRoom } from '~/hooks/useCreateRoom';
 
 export default function Modal() {
   const [joinRoomCode, setJoinRoomCode] = useState('');
-  const [createdRoomId, setCreatedRoomId] = useState<string | null>(null);
-  const [waitingForOthers, setWaitingForOthers] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
+  const { theme } = useLocalSearchParams<{ theme : string }>();
+  const { createdRoomId, waitingForOthers, createRoomRequest, shareRoomCode } = useCreateRoom();
 
   async function handleCreateRoom() {
-    setWaitingForOthers(true);
-    try {
-      const { id } = await chat.createChat();
-      setCreatedRoomId(id);
-    } catch (error) {
-      console.error('Erro ao criar sala:', error);
-      setWaitingForOthers(false);
-    }
+    await createRoomRequest(theme);
   }
 
-  async function handleShareRoom(roomCode: string | null) {
-    // TODO: direct to tAI directly from the link
-    if (!roomCode) return;
-    try {
-      await Share.share({
-        message: `${roomCode}`, // TODO: better message
-      });
-    } catch (error) {
-      console.error('Erro ao compartilhar código:', error);
-    }
+  async function handleShareRoom() {
+    await shareRoomCode();
   }
 
   function handleConnectToRoom() {
     if (!joinRoomCode.trim()) return;
-    router.replace({ pathname: '/chat/[chat]', params: { chat: joinRoomCode } });
+
+    router.replace({
+      pathname: '/chat/[chat]',
+      params: {
+        chat: joinRoomCode,
+        mode: 'group',
+      },
+    });
   }
-
-  useEffect(() => {
-    if (!waitingForOthers || !createdRoomId) return;
-
-    const ws = new WebSocket(`ws://192.168.1.6:8000/ws/${createdRoomId}/1`);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      console.log('WebSocket da sala aberto');
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'participants' && data.count > 1) {
-          ws.close();
-          setWaitingForOthers(false);
-          router.replace({ pathname: '/chat/[chat]', params: { chat: createdRoomId } });
-        }
-      } catch (error) {
-        console.error('Erro ao interpretar mensagem:', error);
-      }
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, [waitingForOthers, createdRoomId]);
 
   return (
     <Animated.View entering={FadeIn} className="flex-1 items-center justify-center bg-[#00000040]">
@@ -88,7 +52,7 @@ export default function Modal() {
             <ActivityIndicator />
             <TouchableOpacity
               className="mt-4 flex-row items-center justify-center gap-2 rounded-lg bg-purple-500 p-3"
-              onPress={() => handleShareRoom(createdRoomId)}>
+              onPress={handleShareRoom}>
               <Text className="text-white">Compartilhar o código</Text>
               <Ionicons name="share-social" color="white" size={24} />
             </TouchableOpacity>

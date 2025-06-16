@@ -13,8 +13,8 @@ import { sendAudio } from '~/services/audio';
 
 import { useLocalSearchParams } from 'expo-router';
 
-import { useChatWebSocket } from '~/hooks/useChatWebSocket';
 import { useAudioRecording } from '~/hooks/useAudioRecording';
+import { useChatWebSocket } from '~/hooks/useChatWebSocket';
 
 interface Feedback {
   type: 'loading' | 'typing' | 'error';

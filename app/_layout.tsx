@@ -8,6 +8,7 @@ import { SplashScreen, Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,6 +30,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView>
+      <StatusBar style="auto" />
       <View className="flex-1 dark:bg-[#040A18]">
         <SafeAreaProvider>
           <Stack>
