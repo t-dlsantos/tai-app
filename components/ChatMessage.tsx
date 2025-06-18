@@ -21,7 +21,7 @@ export function ChatMessage({ message }: { message: MessageProps }) {
     : isUser
       ? 'self-end bg-zinc-200'
       : 'self-start';
-  console.log(userId)
+      
   return (
     <View className='w-full flex-col'>
       {(isAssistant || isOtherUser) && (

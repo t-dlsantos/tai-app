@@ -1,4 +1,4 @@
-import { View, Text, Button, TouchableOpacity } from 'react-native';
+import { View, Text, Button, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import Carousel from 'react-native-reanimated-carousel';
 import { contexts } from '~/constants/contexts';
@@ -7,14 +7,19 @@ import { useState } from 'react';
 import { router } from 'expo-router';
 
 import { Ionicons } from '@expo/vector-icons';
-import { useSoloChatWebSocket } from '~/hooks/useSoloChatWebSocket';
+
 import chat from '~/services/chat';
 
 export function CarouselContexts() {
   const scrollOffsetValue = useSharedValue<number>(0);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isCreatingSolo, setIsCreatingSolo] = useState(false);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
 
   async function handleSoloPractice() {
+    if (isCreatingSolo) return;
+    
+    setIsCreatingSolo(true);
     try {
       const { id } = await chat.createChat(contexts[currentIndex].text);
       router.replace({
@@ -23,16 +28,29 @@ export function CarouselContexts() {
       });
     } catch (err) {
       console.error('Erro ao criar chat:', err);
+      alert('Erro ao criar prática solo. Tente novamente.');
+    } finally {
+      setIsCreatingSolo(false);
     }
   }
 
   function handleGroupPractice() {
-    router.push({
-      pathname: '/room',
-      params: {
-        theme: contexts[currentIndex].text,
-      },
-    });
+    if (isCreatingGroup) return;
+    
+    setIsCreatingGroup(true);
+    try {
+      router.push({
+        pathname: '/room',
+        params: {
+          theme: contexts[currentIndex].text,
+        },
+      });
+    } catch (err) {
+      console.error('Erro ao navegar para sala:', err);
+      alert('Erro ao abrir sala. Tente novamente.');
+    } finally {
+      setIsCreatingGroup(false);
+    }
   }
 
   return (
@@ -62,18 +80,36 @@ export function CarouselContexts() {
           </Text>
         </View>
       </View>
-      <TouchableOpacity
-        className="bg-violet-5 00 mt-2 h-12 w-full flex-row items-center justify-center gap-2 rounded-lg"
-        onPress={handleSoloPractice}>
-        <Ionicons name="person" color="white" size={20} />
-        <Text className="font-regular text-zinc-100 ">Praticar sozinho</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        className="bg-violet-5 00 h-12 w-full flex-row items-center justify-center gap-2 rounded-lg"
-        onPress={handleGroupPractice}>
-        <Ionicons name="people" color="white" size={24} />
-        <Text className="font-regular text-zinc-100 ">Praticar com um amigo</Text>
-      </TouchableOpacity>
+      
+      <View className="w-full gap-3 mt-6">
+        <TouchableOpacity
+          className="bg-violet-500 h-12 w-full flex-row items-center justify-center gap-2 rounded-lg"
+          onPress={handleSoloPractice}
+          disabled={isCreatingSolo || isCreatingGroup}>
+          {isCreatingSolo ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Ionicons name="person" color="white" size={20} />
+          )}
+          <Text className="font-medium text-zinc-100">
+            {isCreatingSolo ? 'Criando...' : 'Praticar sozinho'}
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          className="bg-violet-600 h-12 w-full flex-row items-center justify-center gap-2 rounded-lg"
+          onPress={handleGroupPractice}
+          disabled={isCreatingSolo || isCreatingGroup}>
+          {isCreatingGroup ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Ionicons name="people" color="white" size={24} />
+          )}
+          <Text className="font-medium text-zinc-100">
+            {isCreatingGroup ? 'Abrindo...' : 'Praticar com um amigo'}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }

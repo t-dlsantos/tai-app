@@ -9,7 +9,7 @@ export async function sendAudio(uri: string) {
       type: 'audio/m4a',
     } as any);
 
-    const response = await fetch(API_URL + '/audio/transcribe', {
+    const response = await fetch("https://" + API_URL + '/audio/transcribe', {
       method: 'POST',
       headers: {
         'Content-Type': 'multipart/form-data',

@@ -5,6 +5,7 @@ import { Container } from '~/components/Container';
 import { Header } from '~/components/Header';
 import { LoadingMessage } from '~/components/LoadingMessage';
 import { ChatMessage } from '~/components/ChatMessage';
+import { ChatStatus } from '~/components/ChatStatus';
 
 import { TextInput } from 'react-native-gesture-handler';
 
@@ -32,22 +33,37 @@ export default function Chat() {
   const flatListRef = useRef<FlatList>(null);
   const userId = useUserId();
 
-  const { messages, sendMessage, notification, currentTurn, isCurrentUserTurn, isThinking } =
-    useChatWebSocket({
-      chatId: chat!,
-      userId,
-      mode: chatMode,
-    });
+  const { 
+    messages, 
+    sendMessage, 
+    notification, 
+    chatState,
+    isCurrentUserTurn, 
+    isThinking,
+    isConnected,
+    isWaiting,
+    isReady,
+    participants,
+    currentTurn,
+    error,
+    reconnect
+  } = useChatWebSocket({
+    chatId: chat!,
+    userId,
+    mode: chatMode,
+  });
 
   const { isRecording, recordingTime, startRecording, stopRecording, cancelRecording } =
     useAudioRecording();
 
   function handleSendMessage() {
+    if (!isCurrentUserTurn || isThinking) return;
     sendMessage(input);
     setInput('');
   }
 
   async function handleStartRecording() {
+    if (!isCurrentUserTurn || isThinking) return;
     await startRecording();
   }
 
@@ -83,13 +99,28 @@ export default function Chat() {
   return (
     <Container>
       <Header showBackButton />
+      
+      {/* Chat Status */}
+      <ChatStatus
+        isConnected={isConnected}
+        isWaiting={isWaiting}
+        isThinking={isThinking}
+        isCurrentUserTurn={isCurrentUserTurn}
+        currentTurn={currentTurn}
+        participants={participants}
+        mode={chatMode}
+        error={error}
+        onReconnect={reconnect}
+      />
+
+      {/* Notification Banner */}
       {bannerVisible && notification && (
         <View
           style={{
             backgroundColor: '#333',
             padding: 8,
             position: 'absolute',
-            top: 60,
+            top: 120,
             alignSelf: 'center',
             borderRadius: 8,
             zIndex: 1,
@@ -97,6 +128,8 @@ export default function Chat() {
           <Text style={{ color: '#fff' }}>{notification}</Text>
         </View>
       )}
+
+      {/* Chat Messages */}
       <View className="w-full flex-1">
         <FlatList
           data={messages}
@@ -108,15 +141,19 @@ export default function Chat() {
           showsVerticalScrollIndicator={false}
         />
       </View>
-      <View className="mt-2 w-full items-center  gap-2 rounded-2xl border-t border-t-gray-300 bg-zinc-200 p-2 dark:bg-[#171731]">
+
+      {/* Input Area */}
+      <View className="mt-2 w-full items-center gap-2 rounded-2xl border-t border-t-gray-300 bg-zinc-200 p-2 dark:bg-[#171731]">
         <TextInput
           className="w-full text-lg text-black dark:text-white"
           value={input}
           onChangeText={setInput}
           multiline={true}
-          editable={isCurrentUserTurn && !isThinking}
+          editable={isCurrentUserTurn && !isThinking && isConnected}
           placeholder={
-            isThinking
+            !isConnected
+              ? 'Conectando...'
+              : isThinking
               ? 'A IA está pensando...'
               : isCurrentUserTurn
               ? 'Digite sua mensagem'
@@ -124,25 +161,42 @@ export default function Chat() {
           }
           placeholderTextColor="gray"
         />
+        
         {isRecording ? (
-          <View className="w-full flex-row justify-between">
+          <View className="w-full flex-row justify-between items-center">
             <TouchableOpacity onPress={cancelRecording}>
-              <Ionicons name="close-circle" color="gray" size={28} />
+              <Ionicons name="close-circle" color="#ef4444" size={28} />
             </TouchableOpacity>
-            <Text>{`${Math.floor(recordingTime / 60)}:${(recordingTime % 60)
-              .toString()
-              .padStart(2, '0')}`}</Text>
+            <Text className="text-gray-600 dark:text-gray-300">
+              {`${Math.floor(recordingTime / 60)}:${(recordingTime % 60)
+                .toString()
+                .padStart(2, '0')}`}
+            </Text>
             <TouchableOpacity onPress={handleStopRecording}>
-              <Ionicons name="checkmark-circle" color="gray" size={28} />
+              <Ionicons name="checkmark-circle" color="#10b981" size={28} />
             </TouchableOpacity>
           </View>
         ) : (
           <View className="w-full flex-row justify-end gap-4">
-            <TouchableOpacity onPress={handleStartRecording}>
-              <Ionicons name="mic" color="gray" size={24} />
+            <TouchableOpacity 
+              onPress={handleStartRecording}
+              disabled={!isCurrentUserTurn || isThinking || !isConnected}
+            >
+              <Ionicons 
+                name="mic" 
+                color={isCurrentUserTurn && !isThinking && isConnected ? "#6b7280" : "#d1d5db"} 
+                size={24} 
+              />
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleSendMessage}>
-              <Ionicons name="send" color="gray" size={22} />
+            <TouchableOpacity 
+              onPress={handleSendMessage}
+              disabled={!isCurrentUserTurn || isThinking || !isConnected || !input.trim()}
+            >
+              <Ionicons 
+                name="send" 
+                color={isCurrentUserTurn && !isThinking && isConnected && input.trim() ? "#6b7280" : "#d1d5db"} 
+                size={22} 
+              />
             </TouchableOpacity>
           </View>
         )}
