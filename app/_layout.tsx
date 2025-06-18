@@ -4,21 +4,18 @@ import { useEffect } from 'react';
 
 import { Inter_900Black, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
 
-import * as SplashScreen from 'expo-splash-screen';
-
-import { Stack } from 'expo-router';
-
+import { SplashScreen, Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
-import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function Layout() {
+export default function RootLayout() {
   const [loaded, error] = useFonts({
     Inter_900Black,
-    Inter_700Bold
+    Inter_700Bold,
   });
 
   useEffect(() => {
@@ -30,13 +27,29 @@ export default function Layout() {
   if (!loaded && !error) {
     return null;
   }
-  
+
   return (
     <GestureHandlerRootView>
-      <SafeAreaProvider>
-      <StatusBar style='auto' />  
-      <Stack screenOptions={{ headerShown: false }} />
-      </SafeAreaProvider>
+      <StatusBar style="auto" />
+      <View className="flex-1 dark:bg-[#040A18]">
+        <SafeAreaProvider>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="chat/[chat]"
+              options={{ headerShown: false, animation: 'simple_push' }}
+            />
+            <Stack.Screen
+              name="room"
+              options={{
+                presentation: 'transparentModal',
+                animation: 'fade',
+                headerShown: false,
+              }}
+            />
+          </Stack>
+        </SafeAreaProvider>
+      </View>
     </GestureHandlerRootView>
   );
 }

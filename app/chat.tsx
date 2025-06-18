@@ -1,106 +1,141 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Alert, FlatList, TouchableOpacity, View, Text } from 'react-native';
 
-import EventSource from 'react-native-sse';
-import 'react-native-url-polyfill/auto';
-
-import { useImmer } from 'use-immer';
-
-import { ChatContainer } from '~/components/ChatContainer';
-import { ChatInput } from '~/components/ChatInput';
 import { Container } from '~/components/Container';
 import { Header } from '~/components/Header';
+import { LoadingMessage } from '~/components/LoadingMessage';
+import { ChatMessage } from '~/components/ChatMessage';
 
-import chat from '~/services/chat';
+import { TextInput } from 'react-native-gesture-handler';
+import { Ionicons } from '@expo/vector-icons';
 
-import { Message } from '~/types/Message';
+import { sendAudio } from '~/services/audio';
+
+import { useLocalSearchParams } from 'expo-router';
+
+import { useAudioRecording } from '~/hooks/useAudioRecording';
+import { useChatWebSocket } from '~/hooks/useChatWebSocket';
+
+interface Feedback {
+  type: 'loading' | 'typing' | 'error';
+  text: string;
+}
 
 export default function Chat() {
-  const [chatId, setChatId] = useState(null);
-  const [messages, setMessages] = useImmer<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const { chat } = useLocalSearchParams<{ chat: string }>();
+  const [userId] = useState(() => Date.now());
+  const [feedback, setFeedback] = useState<null | Feedback>(null);
+  const [input, setInput] = useState('');
+  const [bannerVisible, setBannerVisible] = useState(false);
 
-  const isLoading = messages.length && messages[messages.length - 1].loading;
+  const { messages, currentTurn, isMyTurn, sendMessage, notification, participantCount } = useChatWebSocket({
+    chatId: chat!,
+    userId,
+  });
 
-  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+  const { isRecording, audioURI, recordingTime, startRecording, stopRecording, cancelRecording } =
+    useAudioRecording();
 
-  async function submitNewMessage() {
-    const trimmedMessage = newMessage.trim();
-    if (!trimmedMessage || isLoading) return;
+  function handleSendMessage() {
+    sendMessage(input);
+    setInput('');
+  }
 
-    setMessages((draft) => [
-      ...draft,
-      { role: 'user', content: trimmedMessage },
-      { role: 'assistant', content: '', sources: [], loading: true },
-    ]);
-    setNewMessage('');
+  async function handleStartRecording() {
+    await startRecording();
+  }
 
-    let chatIdOrNew = chatId;
+  async function handleStopRecording() {
+    const uri = await stopRecording();
 
-    try {
-      if (!chatId) {
-        const { id } = await chat.createChat();
-        setChatId(id);
-        chatIdOrNew = id;
+    if (uri) {
+      try {
+        const result = await sendAudio(uri);
+        if (result.transcription) {
+          setInput(result.transcription);
+        }
+      } catch (error) {
+        Alert.alert('Erro ao enviar o áudio para o servidor');
       }
-
-      const es = new EventSource(`${apiUrl}/chats/${chatIdOrNew}`, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        method: 'POST',
-        body: JSON.stringify({ message: trimmedMessage }),        
-      });
-
-      es.addEventListener('open', (event) => {
-        console.log('Open SSE connection.');
-      });
-
-      es.addEventListener('message', (event: any) => {
-        setMessages(draft => {
-          draft[draft.length - 1].loading = false;
-        });
-
-        const data = JSON.parse(event.data)
-        const finish_reason = data?.finish_reason;
-           
-        if (finish_reason === "stop") {
-          es.close();
-        }  else {
-          setMessages((draft) => {
-            draft[draft.length - 1].content += data.message;
-          });
-          return;
-        }
-      });
-
-      es.addEventListener('error', (event) => {
-        if (event.type === 'error') {
-          console.error('Connection error:', event.message);
-        } else if (event.type === 'exception') {
-          console.error('Error:', event.message, event.error);
-        }
-      });
-
-      es.addEventListener('close', (event) => {
-        console.log('Close SSE connection.');
-      });
-    } catch (err) {
-      setMessages((draft) => {
-        draft[draft.length - 1].loading = false;
-        draft[draft.length - 1].error = false;
-      });
     }
   }
+
+  useEffect(() => {
+    if (notification) {
+      setBannerVisible(true);
+      const timer = setTimeout(() => {
+        setBannerVisible(false);
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
 
   return (
     <Container>
       <Header showBackButton />
-      <ChatContainer messages={messages} />
-      <ChatInput
-        newMessage={newMessage}
-        setNewMessage={setNewMessage}
-        handleSendMessage={submitNewMessage}
-      />
+      <View style={{ alignItems: 'center', marginVertical: 8 }}>
+        <Text style={{ color: '#555' }}>Participantes online: {participantCount ?? 0}</Text>
+      </View>
+      {bannerVisible && notification && (
+        <View
+          style={{
+            backgroundColor: '#333',
+            padding: 8,
+            position: 'absolute',
+            top: 60,
+            alignSelf: 'center',
+            borderRadius: 8,
+            zIndex: 1,
+          }}
+        >
+          <Text style={{ color: '#fff' }}>{notification}</Text>
+        </View>
+      )}
+      <View className="w-full flex-1">
+        <FlatList
+          data={messages}
+          keyExtractor={(_, index) => index.toString()}
+          renderItem={({ item }) => <ChatMessage message={item} />}
+          ListFooterComponent={() => (feedback?.type === 'loading' ? <LoadingMessage /> : null)}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
+      <View className="mb-2 w-full items-center gap-2 rounded-2xl bg-zinc-200 p-2 dark:bg-[#171731]">
+        <TextInput
+          className="w-full text-lg text-black dark:text-white"
+          value={input}
+          onChangeText={setInput}
+          multiline={true}
+          editable={isMyTurn}
+          placeholder={isMyTurn ? 'Digite sua mensagem...' : `É a vez de: ${currentTurn}`}
+          placeholderTextColor="gray"
+        />
+        {isRecording ? (
+          <View className="w-full flex-row justify-between">
+            <TouchableOpacity onPress={cancelRecording}>
+              <Ionicons name="close-circle" color="gray" size={28} />
+            </TouchableOpacity>
+            <Text>{`${Math.floor(recordingTime / 60)}:${(recordingTime % 60)
+              .toString()
+              .padStart(2, '0')}`}</Text>
+            <TouchableOpacity onPress={handleStopRecording}>
+              <Ionicons name="checkmark-circle" color="gray" size={28} />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          isMyTurn && (
+            <View className="w-full flex-row justify-end gap-4">
+              <TouchableOpacity onPress={handleStartRecording}>
+                <Ionicons name="mic" color="gray" size={24} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleSendMessage}>
+                <Ionicons name="send" color="gray" size={22} />
+              </TouchableOpacity>
+            </View>
+          )
+        )}
+      </View>
     </Container>
   );
 }
